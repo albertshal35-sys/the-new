@@ -1,0 +1,67 @@
+# IceCap Development Intelligence — local / single-host deployment
+# Usage: cp .env.example .env && docker compose up -d --build
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-icecap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-icecap}
+      POSTGRES_DB: ${POSTGRES_DB:-icecap}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-icecap} -d ${POSTGRES_DB:-icecap}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ., dockerfile: worker/Dockerfile }
+    command: ["icecap", "migrate"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-icecap}:${POSTGRES_PASSWORD:-icecap}@db:5432/${POSTGRES_DB:-icecap}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  worker:
+    build: { context: ., dockerfile: worker/Dockerfile }
+    command: ["icecap", "worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-icecap}:${POSTGRES_PASSWORD:-icecap}@db:5432/${POSTGRES_DB:-icecap}
+    volumes:
+      - workervar:/app/var
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  api:
+    build: { context: ., dockerfile: worker/Dockerfile }
+    command: ["icecap", "api", "--port", "8000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-icecap}:${POSTGRES_PASSWORD:-icecap}@db:5432/${POSTGRES_DB:-icecap}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  app:
+    build: { context: ./web }
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-icecap}:${POSTGRES_PASSWORD:-icecap}@db:5432/${POSTGRES_DB:-icecap}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  workervar:
