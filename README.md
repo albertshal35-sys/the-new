@@ -1,5 +1,9 @@
 # IceCap Development Intelligence
 
+> **Recommended deployment: Cloudflare Worker** — see [`cloudflare/README.md`](cloudflare/README.md). It runs the same
+> sources, rules and dashboard with no server or database to manage. The Docker / Python / Next.js version below is kept
+> as an alternative for self-hosting.
+
 Continuously monitors official City of Boston planning and permit records, backfills the previous 365 days,
 identifies qualifying residential / residential-led mixed-use development filings (1–200 units), links records
 across sources into projects, scores them as research leads, and alerts via Telegram and email when new

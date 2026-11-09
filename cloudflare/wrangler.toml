@@ -1,0 +1,33 @@
+# IceCap Development Intelligence — Cloudflare Worker
+name = "icecap-dev-intel"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Poll public sources every 5 minutes (each source also has its own adaptive interval).
+[triggers]
+crons = ["*/5 * * * *"]
+
+# All state lives in one SQLite-backed Durable Object.
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "IceCapStore"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["IceCapStore"]
+
+[vars]
+BACKFILL_DAYS = "365"
+NOTIFY_CHANNELS = "telegram,email"
+USER_AGENT = "IceCapDevelopmentIntelligence/0.2 (public-records monitor)"
+# Set to your workers.dev / custom URL so alerts link to the dashboard
+DASHBOARD_URL = ""
+# Wall-clock budget (ms) for each 5-minute run; keeps each invocation well inside platform limits
+TICK_BUDGET_MS = "15000"
+# Max outbound requests per run (Cloudflare limits subrequests per invocation)
+MAX_REQUESTS_PER_TICK = "40"
+
+# Secrets (set with `npx wrangler secret put NAME`, never in this file):
+#   DASHBOARD_PASSWORD   required — protects the dashboard (HTTP Basic auth, any username)
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID         optional — Telegram alerts
+#   RESEND_API_KEY, ALERT_EMAIL_FROM, ALERT_EMAIL_TO   optional — email alerts via resend.com
